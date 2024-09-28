@@ -1,125 +1,161 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <gmp.h>
+#include<stdio.h>
+#include"gmp.h"
+//#define ORDER_SCALE_DOWN_VAL "68"
 
-int no_of_points=0;
-
-void find_the_order(mpz_t a,mpz_t b,mpz_t p, mpz_t x, mpz_t y)
+void add_point(mpz_t a,mpz_t b,mpz_t p,mpz_t xp,mpz_t yp,mpz_t xq,mpz_t yq,mpz_t xr,mpz_t yr)
 {
-	char cmd_buf[256];
+	mpz_t l,modx,mody,temp1,temp2,temp3,pm,pp;  
+	mpz_init(l);mpz_init(temp1);mpz_init(temp2);mpz_init(temp3);mpz_init(modx);mpz_init(mody);mpz_init(pp);mpz_init(pm);
+        mpz_set(pp,yq);
+	mpz_sub(pm,p,pp);
+        if(mpz_cmp_ui(xp,0)==0&&mpz_cmp_ui(yp,0)==0)
+         {
+             mpz_set(xr,xq);
+             mpz_set(yr,yq);
+             return;
+        }
+        
+        if(mpz_cmp_ui(yq,0)==0&&mpz_cmp_ui(xq,0)==0)
+          {
+            mpz_set(xr,xp);
+             mpz_set(yr,yp);
+             return;       
+          }
 
-	gmp_sprintf(cmd_buf, "./find_order_of_a_point %Zd %Zd %Zd %Zd %Zd", a, b, p, x, y);
-	system(cmd_buf);
+              
+        if(mpz_cmp(xp,xq)==0 && mpz_cmp(yp,pm)==0)
+        {
 
-}
-
-/*int check_prime(mpz_t m)
-{
-	mpz_t modprime;
-	mpz_init(modprime);
-	if(mpz_probab_prime_p(m,50)<1)
-	 	mpz_nextprime(m,m);
-	do
-	{
-		mpz_mod_ui(modprime,m,4);
-		if(mpz_cmp_ui(modprime,3)==0)	
-			return 1;
-        	else
-			mpz_nextprime(m,m);
-	}while(1);
-
-
-}*/
-
-int check_prime(mpz_t m)
-{
-	mpz_t modprime;mpz_t temp;
-	mpz_init(modprime);mpz_init(temp);
-	if(mpz_probab_prime_p(m,500)==2)
-	{
-		return 1;
+        //	printf("ZERO POINT DETECTED.");
+	//	exit(0);
+                mpz_set_ui(xr,0);
+                mpz_set_ui(yr,0);
+                return; 
 	}
-	else
-	{
-		mpz_add_ui(temp,m,1);	 	
-		mpz_set(m,temp);
-	do
-	{
-		if(mpz_probab_prime_p(m,500)==2)
-		{
-			return 1;
-		}
-		else
-		{
-			mpz_add_ui(temp,m,1);	 	
-			mpz_set(m,temp);
-		}
-	}while(1);
-	}
-
+	mpz_sub(temp1,yq,yp);
+	mpz_sub(temp2,xq,xp);
+	mpz_mod(mody,temp1,p);
+	mpz_invert(modx,temp2,p);
+	//gmp_printf("\nmodx is :%Zd,temp2 is %Zd, p is %Zd\n",modx,temp2,p);
+	mpz_mul(temp1,modx,mody);
+	mpz_mod(l,temp1,p);
+ 	//	xr=mod(((l*l)-xp-xq),m);
+	mpz_pow_ui(temp1,l,2);
+	mpz_add(temp2,xp,xq);
+	mpz_sub(temp3,temp1,temp2);
+	mpz_mod(xr,temp3,p);
+    	//	yr=mod((l*(xp-xr)-yp),p);
+	mpz_sub(temp1,xp,xr);
+	mpz_mul(temp2,temp1,l);
+	mpz_sub(temp3,temp2,yp);
+	mpz_mod(yr,temp3,p);
 	
+	/*  Clear all variables  */
+	mpz_clear(l); mpz_clear(modx); mpz_clear(mody); mpz_clear(temp1); mpz_clear(temp2); mpz_clear(temp3);mpz_clear(pm);mpz_clear(pp);
+    		
 }
 
-void find_points(mpz_t a,mpz_t b,mpz_t p)
+
+void double_point(mpz_t a,mpz_t b, mpz_t p,mpz_t xp,mpz_t yp,mpz_t xr,mpz_t yr)
 {
-	int ret=0; 
-	mpz_t x,xx,y,temp1,temp2,temp3;
-	mpz_init(x); mpz_init(xx); mpz_init(y);mpz_init(temp1);mpz_init(temp2);mpz_init(temp3);
-
-    	for(mpz_set_ui(x,0);mpz_cmp(x,p)!=0;mpz_add_ui(x,x,1))
+	mpz_t l,modx,mody,temp1,temp2,temp3;
+	mpz_init(l);mpz_init(temp1);
+	mpz_init(temp2);mpz_init(temp3);mpz_init(modx);mpz_init(mody);
+   	if(mpz_cmp_ui(yp,0)==0)
 	{
-        	mpz_pow_ui(temp1,x,3);
-		mpz_mul(temp2,x,a);
-        	mpz_add(temp3,temp2,b);
-        	mpz_add(xx,temp3,temp1);
-        	mpz_mod(xx,xx,p);
-		if(mpz_cmp_ui(xx,0)==0)
-		{
-			mpz_set(y,xx);
-			gmp_printf("(%Zd , %Zd): ",x,y);
-			fflush(stdout);
-			find_the_order(a, b, p, x, y);
-			printf("\n");
-			no_of_points++;
-		}
-        	ret=mpz_legendre(xx,p);
-        	if(ret==1)
-        	{
-                	mpz_add_ui(temp1,p,1);
-			mpz_set_ui(temp2,4);
-			mpz_fdiv_q(temp1,temp1,temp2);
-			mpz_powm(y,xx,temp1,p);
-			gmp_printf("(%Zd , %Zd)\t",x,y);
-			no_of_points++;
-			mpz_sub(y,p,y);
-			gmp_printf("(%Zd , %Zd): ",x,y);
-			fflush(stdout);
-			find_the_order(a, b, p, x, y);
-			//printf("\n");
-			no_of_points++;
-
-          	}
+		//printf("ZERO POINT DETECTED.");
+		//exit(0);
+                mpz_set_ui(xr,0);
+                mpz_set_ui(yr,0);
+                return;
 	}
-	no_of_points++; // Including the point at infinity.
+        //l=mod((mod(((3*xp*xp)+a),m)*inversemod((2*yp),m)),m);
+        mpz_pow_ui(temp1,xp,2);
+	mpz_mul_ui(temp1,temp1,3);
+	mpz_add(temp2,temp1,a);
+	mpz_mod(modx,temp2,p);				
+	mpz_mul_ui(temp1,yp,2);
+	mpz_invert(mody,temp1,p);
+	mpz_mul(temp3,modx,mody);
+	mpz_mod(l,temp3,p);
+    	//xr=mod(((l*l)-xp-xq),m);
+	mpz_pow_ui(temp1,l,2);
+	mpz_mul_ui(temp2,xp,2);
+	mpz_sub(temp3,temp1,temp2);
+	mpz_mod(xr,temp3,p);
 
-     /*  Clear all variables  */
-	mpz_clear(temp1); mpz_clear(temp2); mpz_clear(temp3);mpz_clear(x); mpz_clear(y); mpz_clear(xx);
+    	//yr=mod((l*(xp-xr)-yp),m);
+	mpz_sub(temp1,xp,xr);
+	mpz_mul(temp2,temp1,l);
+	mpz_sub(temp3,temp2,yp);
+	mpz_mod(yr,temp3,p);
 
+	 /*  Clear all variables  */
+	mpz_clear(l); mpz_clear(modx); mpz_clear(mody); mpz_clear(temp1); mpz_clear(temp2); mpz_clear(temp3);
+
+}
+
+void find_order(mpz_t a,mpz_t b,mpz_t p,mpz_t xp,mpz_t yp,mpz_t order)
+{
+        mpz_t l,modx,mody,temp1,temp2,temp3,xq,yq,xr,yr,c;  
+        mpz_init(l);mpz_init(temp1);mpz_init(temp2);mpz_init(temp3);mpz_init(modx);
+        mpz_init(mody);mpz_init(xq);mpz_init(yq);mpz_init(xr);mpz_init(yr);
+
+        mpz_set(xq,xp);
+        mpz_set(yq,yp);
+        mpz_init(c);
+	mpz_set_ui(c,1);
+        double_point(a,b,p,xq,yq,xr,yr);
+        if(mpz_cmp_ui(xr,0)==0 && mpz_cmp_ui(yr,0)==0)
+        {
+          mpz_set_ui(order,2);
+          return;
+        } 
+	mpz_add_ui(c,c,1);
+        mpz_set(xq,xr);
+        mpz_set(yq,yr);
+        while(1)
+        {
+                mpz_add_ui(c,c,1);
+                if(mpz_cmp(xp,xq)==0)
+                {
+                        mpz_set(order,c);
+                        break;
+                }
+                else
+                {
+                        add_point(a,b,p,xp,yp,xq,yq,xr,yr);
+                        mpz_set(xq,xr);
+                        mpz_set(yq,yr);
+                }
+        }
+        // Clear all variables
+        mpz_clear(l); mpz_clear(modx); mpz_clear(mody); mpz_clear(temp1); mpz_clear(temp2); mpz_clear(temp3);
+        mpz_clear(xq);mpz_clear(yq);mpz_clear(xr);mpz_clear(yr);mpz_clear(c);
+        /*
+	mpz_t temp1;
+        mpz_init(temp1);
+        mpz_set_str ( temp1, ORDER_SCALE_DOWN_VAL, 10 );
+        mpz_fdiv_q(order,p,temp1);      // Order Scale Down
+	mpz_clear(temp1);
+        */
 }
 
 int main(int argc,char *argv[])
 {
-	int fl=0;
- 	mpz_t m,a,b;
- 	mpz_init(m); mpz_init(a); mpz_init(b);
- 	mpz_set_str(a,argv[1],10);
- 	mpz_set_str(b,argv[2],10);
-	mpz_set_str(m,argv[3],10);
-	fl=check_prime(m);
-        if(fl==1)
-	gmp_printf("Prime field is :%Zd\n", m);
- 	find_points(a,b,m);
-	printf("Number of Total Points(including O point) is: %d\n", no_of_points);
- 	mpz_clear(m);mpz_clear(a),mpz_clear(b);
- 	return 0;
+        gmp_printf("hello");
+	mpz_t xp,yp,order,m,a,b;
+        mpz_init(xp);mpz_init(yp);mpz_init(order);mpz_init(m);mpz_init(a);mpz_init(b);
+	mpz_set_str(a,argv[1],10);
+        mpz_set_str(b,argv[2],10);
+        mpz_set_str(m,argv[3],10);
+	mpz_set_str(xp,argv[4],10);
+        mpz_set_str(yp,argv[5],10);
+
+	
+	find_order(a,b,m,xp,yp,order);
+	gmp_printf("\nOrder is::%Zd\n",order);
+
+		
+	return 0;
 }
